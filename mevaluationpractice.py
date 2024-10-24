@@ -87,6 +87,7 @@ def poly_model(x_train, y_train, x_cv, y_cv, x_test, y_test):
 #mse_linear_train, mse_linear_cv = linear_model(x_train, y_train, x_cv, y_cv, x_test, y_test)
 
 
+# Testin for the optimal polynomial degree
 def multiple_degree_models(x_train, y_train, x_cv, y_cv, x_test, y_test):
 
     train_mses = []
@@ -124,6 +125,18 @@ def multiple_degree_models(x_train, y_train, x_cv, y_cv, x_test, y_test):
         yhat = model.predict(X_cv_mapped_scaled)
         cv_mse = mean_squared_error(y_cv, yhat) / 2
         cv_mses.append(cv_mse)
+
+
+    degree = np.argmin(cv_mses) + 1
+    print(f"Lowest CV MSE is found in the model with degree={degree}")
+    X_test_mapped = polys[degree-1].transform(x_test)
+    X_test_mapped_scaled = scalers[degree-1].transform(X_test_mapped)
+
+    yhat = models[degree-1].predict(X_test_mapped_scaled)
+    test_mse = mean_squared_error(y_test, yhat) / 2
+    print(f"Training MSE: {train_mses[degree-1]:.2f}")
+    print(f"Cross Validation MSE: {cv_mses[degree-1]:.2f}")
+    print(f"Test MSE: {test_mse:.2f}")
 
     return train_mses, cv_mses, models, polys, scalers
 
@@ -206,19 +219,10 @@ def nn_models_binary():
 train_mses, cv_mses, models, polys, scalers = multiple_degree_models(x_train, y_train, x_cv, y_cv, x_test, y_test)
 degrees=range(1,11)
 utils.plot_train_cv_mses(degrees, train_mses, cv_mses, title="degree of polynomial vs. train and CV MSEs")
-degree = np.argmin(cv_mses) + 1
-print(f"Lowest CV MSE is found in the model with degree={degree}")
-X_test_mapped = polys[degree-1].transform(x_test)
-X_test_mapped_scaled = scalers[degree-1].transform(X_test_mapped)
 
-yhat = models[degree-1].predict(X_test_mapped_scaled)
-test_mse = mean_squared_error(y_test, yhat) / 2
-print(f"Training MSE: {train_mses[degree-1]:.2f}")
-print(f"Cross Validation MSE: {cv_mses[degree-1]:.2f}")
-print(f"Test MSE: {test_mse:.2f}")
 """
 
 
-nn_train_mses, nn_cv_mses, nn_models, test_mse, model_num = nn_models_f(x_train, y_train, x_cv, y_cv, x_test, y_test, degree=1)
+nn_train_mses, nn_cv_mses, nn_models, test_mse, model_num = nn_models_linear(x_train, y_train, x_cv, y_cv, x_test, y_test, degree=1)
 
 
