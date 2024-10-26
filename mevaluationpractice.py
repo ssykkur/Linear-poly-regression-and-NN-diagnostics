@@ -6,7 +6,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error
 from datadata import data
 import tensorflow as tf
-
+import time
 import utils
 
 np.set_printoptions(precision=2)
@@ -25,10 +25,11 @@ y = np.expand_dims(y, axis=1)
 data_2 = np.loadtxt('c:/Users/ashem/studies/andrewngcourse/c2/w3/labs/data/data_w3_ex2.csv', delimiter=',')
 
 
-x_bc = data[:, :-1]
-y_bc = data[:, -1]
+x_bc = data_2[:,:-1]
+y_bc = data_2[:,-1]
 y_bc = np.expand_dims(y_bc, axis=1)
-
+print(f"the shape of the inputs x is: {x_bc.shape}")
+print(f"the shape of the targets y is: {y_bc.shape}")
 
 
 #utils.plot_dataset(x=x, y=y, title='input vs target')
@@ -87,7 +88,7 @@ def poly_model(x_train, y_train, x_cv, y_cv, x_test, y_test):
 #mse_linear_train, mse_linear_cv = linear_model(x_train, y_train, x_cv, y_cv, x_test, y_test)
 
 
-# Testin for the optimal polynomial degree
+# Testin for the optimal polynomial degree for features
 def multiple_degree_models(x_train, y_train, x_cv, y_cv, x_test, y_test):
 
     train_mses = []
@@ -212,17 +213,89 @@ def nn_models_linear(x_train, y_train, x_cv, y_cv, x_test, y_test, degree=1):
     return nn_train_mses, nn_cv_mses, nn_models, test_mse, model_num
 
 
-def nn_models_binary():
-    pass
+def nn_models_binary(x_bc, y_bc):
+
+    x_bc_train, x_, y_bc_train, y_ = train_test_split(x_bc, y_bc, test_size=0.40, random_state=1)
+
+    # Split the 40% subset above into two: one half for cross validation and the other for the test set
+    x_bc_cv, x_bc_test, y_bc_cv, y_bc_test = train_test_split(x_, y_, test_size=0.50, random_state=1)
+
+    # Delete temporary variables
+    del x_, y_
+
+    scaler_linear = StandardScaler()
+
+    x_bc_train_scaled = scaler_linear.fit_transform(x_bc_train)
+    x_bc_cv_scaled = scaler_linear.transform(x_bc_cv)
+    x_bc_test_scaled = scaler_linear.transform(x_bc_test)
+
+    nn_train_error = []
+    nn_cv_error = []
+
+    models_bc = utils.build_models()
+
+    for model in models_bc:
+
+        model.compile(
+        loss=tf.keras.losses.BinaryCrossentropy(from_logits=True),
+        optimizer=tf.keras.optimizers.Adam(learning_rate=0.01),
+        )
+
+        print(f"Training {model.name}...")
+
+    # Train the model
+        model.fit(
+            x_bc_train_scaled, y_bc_train,
+            epochs=200,
+            verbose=0
+        )
+        
+        print("Done!\n")
+
+        threshold = 0.5
+        
+        yhat = model.predict(x_bc_train_scaled)
+        yhat = tf.math.sigmoid(yhat)
+        yhat = np.where(yhat >= threshold, 1, 0)
+        train_error = np.mean(yhat != y_bc_train)
+        nn_train_error.append(train_error)
+
+        yhat = model.predict(x_bc_cv_scaled)
+        yhat = tf.math.sigmoid(yhat)
+        yhat = np.where(yhat >= threshold, 1, 0)
+        cv_error = np.mean(yhat != y_bc_cv)
+        nn_cv_error.append(cv_error)
+    
+    for model_num in range(len(nn_train_error)):
+        print(
+            f"Model {model_num+1}: Training Set Classification Error: {nn_train_error[model_num]:.5f}, " +
+            f"CV Set Classification Error: {nn_cv_error[model_num]:.5f}"
+            )
+    
+    least_error = np.argmin(nn_cv_error)
+    model_num = least_error + 1
+
+    yhat = models_bc[model_num-1].predict(x_bc_test_scaled)
+    yhat = tf.math.sigmoid(yhat)
+    yhat = np.where(yhat >= threshold, 1, 0)
+    nn_test_error = np.mean(yhat != y_bc_test)
+
+    print(f"Selected Model: {model_num}")
+    print(f"Training Set Classification Error: {nn_train_error[model_num-1]:.4f}")
+    print(f"CV Set Classification Error: {nn_cv_error[model_num-1]:.4f}")
+    print(f"Test Set Classification Error: {nn_test_error:.4f}")
+        
 
 """
 train_mses, cv_mses, models, polys, scalers = multiple_degree_models(x_train, y_train, x_cv, y_cv, x_test, y_test)
 degrees=range(1,11)
 utils.plot_train_cv_mses(degrees, train_mses, cv_mses, title="degree of polynomial vs. train and CV MSEs")
 
-"""
 
 
 nn_train_mses, nn_cv_mses, nn_models, test_mse, model_num = nn_models_linear(x_train, y_train, x_cv, y_cv, x_test, y_test, degree=1)
+"""
 
 
+
+nn_models_binary(x_bc, y_bc)
